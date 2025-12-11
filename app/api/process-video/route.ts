@@ -14,6 +14,7 @@ export async function POST(request: Request) {
         const tone = formData.get('tone') as string;
         const goal = formData.get('goal') as string;
         const language = formData.get('language') as string;
+        const scriptStructure = formData.get('scriptStructure') as string;
         const files = formData.getAll('files') as File[];
 
         if (!url) {
@@ -116,7 +117,8 @@ export async function POST(request: Request) {
             tone,
             goal,
             language: targetLanguage,
-            hasDocuments: uploadedDocs.length > 0
+            hasDocuments: uploadedDocs.length > 0,
+            scriptStructure: scriptStructure || undefined
         });
 
         const parts: any[] = [

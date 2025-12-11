@@ -1,8 +1,7 @@
-import { Video, FileText, Sparkles, BarChart2, MessageCircle, Share2, Instagram, Youtube, Twitter } from 'lucide-react';
-import dynamic from 'next/dynamic';
+'use client';
 
-// Dynamic import for ReactPlayer
-const ReactPlayer = dynamic(() => import('react-player'), { ssr: false }) as any;
+import { useState } from 'react';
+import { Video, FileText, Sparkles, BarChart2, MessageCircle, Share2, Instagram, Youtube, Twitter, ChevronDown, ChevronUp, Eye, Clapperboard, Mic } from 'lucide-react';
 
 interface ResultDisplayProps {
     result: any;
@@ -10,80 +9,19 @@ interface ResultDisplayProps {
 }
 
 export default function ResultDisplay({ result, language }: ResultDisplayProps) {
+    const [showFullTranscription, setShowFullTranscription] = useState(false);
+
     if (!result) return null;
 
-    const isTextPost = result.metadata.text_content || result.metadata.platform === 'Twitter' || result.metadata.platform === 'X';
+    // Handle both old format (string) and new format (object/array) for newContent
+    const newContent = result.newContent || {};
+    const hookData = typeof newContent.hook === 'object' ? newContent.hook : { visual: '', audio: newContent.hook || '' };
+    const visualStoryboard = Array.isArray(newContent.visualStoryboard) ? newContent.visualStoryboard : [];
+    const scriptLines = Array.isArray(newContent.script) ? newContent.script : [];
+    const scriptText = typeof newContent.script === 'string' ? newContent.script : '';
 
     return (
         <div className="space-y-6">
-            {/* Original Content Card */}
-            <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-400">
-                    {isTextPost ? <FileText className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-                    {isTextPost ? 'Original Post' : 'Original Video'}
-                </h3>
-
-                {isTextPost ? (
-                    // Tweet/Text Card
-                    <div className="bg-white text-black rounded-xl p-6 shadow-lg max-w-md mx-auto">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 font-bold">
-                                {result.metadata.uploader ? result.metadata.uploader[0].toUpperCase() : 'U'}
-                            </div>
-                            <div>
-                                <p className="font-bold text-sm">{result.metadata.uploader || 'Unknown User'}</p>
-                                <p className="text-xs text-gray-500">@{result.metadata.uploader || 'user'}</p>
-                            </div>
-                            <Twitter className="w-5 h-5 text-blue-400 ml-auto" />
-                        </div>
-
-                        <p className="text-lg mb-4 whitespace-pre-wrap font-sans">{result.metadata.text_content}</p>
-
-                        {result.metadata.image_url && (
-                            <div className="rounded-lg overflow-hidden border border-gray-200 mb-2">
-                                <img
-                                    src={result.metadata.image_url}
-                                    alt="Post attachment"
-                                    className="w-full h-auto object-cover"
-                                />
-                            </div>
-                        )}
-
-                        <div className="text-xs text-gray-500 mt-2">
-                            {new Date(result.metadata.upload_date).toLocaleDateString()}
-                        </div>
-                    </div>
-                ) : (
-                    // Video Player
-                    <div className={`mx-auto bg-black rounded-lg overflow-hidden mb-4 relative flex items-center justify-center ${(result.metadata.width && result.metadata.height && result.metadata.width > result.metadata.height)
-                        ? 'aspect-video w-full'
-                        : 'aspect-[9/16] max-h-[500px]'
-                        }`}>
-                        {result.videoPath ? (
-                            <video
-                                src={result.videoPath}
-                                controls
-                                className="w-full h-full object-contain"
-                            />
-                        ) : (
-                            <ReactPlayer
-                                url={result.metadata.original_url}
-                                controls
-                                width="100%"
-                                height="100%"
-                            />
-                        )}
-                    </div>
-                )}
-
-                {!isTextPost && (
-                    <div className="bg-gray-900/50 p-3 rounded-lg mt-4">
-                        <p className="text-xs text-gray-400 uppercase">Original Description</p>
-                        <p className="text-sm text-gray-300">{result.metadata.description}</p>
-                    </div>
-                )}
-            </div>
-
             {/* Metrics Card */}
             <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-center justify-between mb-4">
@@ -143,7 +81,7 @@ export default function ResultDisplay({ result, language }: ResultDisplayProps) 
                 </div>
             </div>
 
-            {/* Analysis Card */}
+            {/* Analysis & Transcription Card */}
             <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-purple-400">
                     <FileText className="w-5 h-5" />
@@ -159,8 +97,26 @@ export default function ResultDisplay({ result, language }: ResultDisplayProps) 
                         <p className="text-sm text-gray-300">{result.analysis}</p>
                     </div>
                     <div>
-                        <p className="text-xs text-gray-400 uppercase mb-1">Transcription (Original)</p>
-                        <div className="bg-gray-900/50 p-3 rounded-lg max-h-32 overflow-y-auto">
+                        <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs text-gray-400 uppercase">Transcription (Original)</p>
+                            <button
+                                onClick={() => setShowFullTranscription(!showFullTranscription)}
+                                className="text-xs text-pink-400 hover:text-pink-300 flex items-center gap-1 transition-colors"
+                            >
+                                {showFullTranscription ? (
+                                    <>
+                                        <ChevronUp className="w-3 h-3" />
+                                        Show less
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDown className="w-3 h-3" />
+                                        Show full
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                        <div className={`bg-gray-900/50 p-3 rounded-lg overflow-y-auto transition-all duration-300 ${showFullTranscription ? 'max-h-96' : 'max-h-24'}`}>
                             <p className="text-xs text-gray-400 whitespace-pre-wrap">{result.transcription}</p>
                         </div>
                     </div>
@@ -171,20 +127,94 @@ export default function ResultDisplay({ result, language }: ResultDisplayProps) 
             <div className="bg-gradient-to-br from-pink-900/20 to-violet-900/20 backdrop-blur-sm p-6 rounded-2xl border border-pink-500/30 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-pink-400">
                     <Sparkles className="w-5 h-5" />
-                    New Content ({language})
+                    Tu Nuevo Contenido ({language})
                 </h3>
                 <div className="space-y-4">
+                    {/* Concept - What new video you'll create */}
+                    {newContent.concept && (
+                        <div className="bg-gradient-to-r from-violet-600/20 to-pink-600/20 p-4 rounded-lg border border-violet-500/30">
+                            <p className="text-xs text-violet-400 uppercase mb-1 font-bold">💡 Concepto del Video</p>
+                            <p className="text-base font-medium text-white">{newContent.concept}</p>
+                        </div>
+                    )}
+
+                    {/* Hook - Separated into Visual and Audio */}
                     <div className="bg-gray-900/50 p-4 rounded-lg border-l-4 border-pink-500">
-                        <p className="text-xs text-pink-400 uppercase mb-1 font-bold">Hook</p>
-                        <p className="text-lg font-medium">{result.newContent.hook}</p>
+                        <p className="text-xs text-pink-400 uppercase mb-2 font-bold flex items-center gap-2">
+                            <Eye className="w-3 h-3" />
+                            Hook (Primeros 3 segundos)
+                        </p>
+                        {hookData.visual && hookData.audio ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="bg-gray-800/50 p-3 rounded">
+                                    <p className="text-xs text-blue-400 uppercase mb-1">👁️ Visual</p>
+                                    <p className="text-sm">{hookData.visual}</p>
+                                </div>
+                                <div className="bg-gray-800/50 p-3 rounded">
+                                    <p className="text-xs text-green-400 uppercase mb-1">🎙️ Audio</p>
+                                    <p className="text-sm">{hookData.audio}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-lg font-medium">{hookData.audio || newContent.hook}</p>
+                        )}
                     </div>
+
+                    {/* Visual Storyboard */}
+                    {visualStoryboard.length > 0 && (
+                        <div className="bg-gray-900/50 p-4 rounded-lg">
+                            <p className="text-xs text-blue-400 uppercase mb-3 font-bold flex items-center gap-2">
+                                <Clapperboard className="w-3 h-3" />
+                                Visual Storyboard
+                            </p>
+                            <div className="space-y-2">
+                                {visualStoryboard.map((scene: any, index: number) => (
+                                    <div key={index} className="bg-gray-800/50 p-3 rounded">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-pink-500 font-bold text-sm">{scene.scene || index + 1}.</span>
+                                            {scene.section && (
+                                                <span className="text-xs bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded">
+                                                    {scene.section}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-gray-200 ml-5">{scene.description}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="bg-gray-900/50 p-4 rounded-lg">
-                        <p className="text-xs text-gray-400 uppercase mb-1">Video Script</p>
-                        <p className="text-sm text-gray-200 whitespace-pre-wrap font-mono">{result.newContent.script}</p>
+                        <p className="text-xs text-green-400 uppercase mb-3 font-bold flex items-center gap-2">
+                            <Mic className="w-3 h-3" />
+                            Script (Audio)
+                        </p>
+                        {scriptLines.length > 0 ? (
+                            <div className="space-y-2">
+                                {scriptLines.map((line: any, index: number) => (
+                                    <div key={index} className="bg-gray-800/50 p-3 rounded">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-green-500 font-bold text-sm">{line.line || index + 1}.</span>
+                                            {line.section && (
+                                                <span className="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded">
+                                                    {line.section}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-gray-200 ml-5">{line.text}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-200 whitespace-pre-wrap font-mono">{scriptText}</p>
+                        )}
                     </div>
-                    <div className="bg-gray-900/50 p-4 rounded-lg">
-                        <p className="text-xs text-gray-400 uppercase mb-1">Call to Action</p>
-                        <p className="text-sm font-medium text-blue-300">{result.newContent.cta}</p>
+
+                    {/* CTA */}
+                    <div className="bg-gray-900/50 p-4 rounded-lg border-l-4 border-violet-500">
+                        <p className="text-xs text-violet-400 uppercase mb-1 font-bold">Call to Action</p>
+                        <p className="text-sm font-medium text-blue-300">{newContent.cta}</p>
                     </div>
                 </div>
             </div>

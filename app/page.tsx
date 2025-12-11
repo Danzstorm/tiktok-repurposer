@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Video, FileText, Sparkles, BarChart2, Globe, MessageCircle, Share2, Instagram, Youtube, Twitter, Upload, File as FileIcon, X } from 'lucide-react';
+import { Loader2, Video, FileText, Sparkles, Globe, Upload, File as FileIcon, X, Twitter, Instagram, Youtube, ListOrdered } from 'lucide-react';
 import ResultDisplay from './components/ResultDisplay';
 
 export default function Home() {
@@ -16,6 +16,54 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [showUpload, setShowUpload] = useState(false);
+  const [scriptStructure, setScriptStructure] = useState('none');
+  const [showStructureInfo, setShowStructureInfo] = useState(false);
+  const [customStructure, setCustomStructure] = useState('');
+
+  // Predefined script structures
+  const scriptStructures: Record<string, { name: string; description: string; structure: string }> = {
+    none: { name: 'Sin estructura (libre)', description: 'Gemini decide la mejor estructura', structure: '' },
+    problemSolution: {
+      name: 'Problema-Solución',
+      description: 'Ideal para productos/servicios',
+      structure: `1. HOOK/ATENCIÓN - Abre la curiosidad con algo impactante
+2. PROBLEMA - Presenta el problema y agrándalo (dolor del cliente)
+3. SOLUCIÓN - Resuelve el problema, muestra el beneficio y explica el "por qué"
+4. CONCLUSIÓN - Resume lo aprendido en una frase
+5. CTA - Llamada a la acción clara (qué debe hacer ahora)`
+    },
+    aida: {
+      name: 'AIDA',
+      description: 'Clásico de marketing',
+      structure: `1. ATENCIÓN - Captura la atención inmediatamente
+2. INTERÉS - Genera interés con datos o historia
+3. DESEO - Crea deseo mostrando beneficios
+4. ACCIÓN - Indica la acción específica a tomar`
+    },
+    storytelling: {
+      name: 'Storytelling',
+      description: 'Conecta emocionalmente',
+      structure: `1. GANCHO - Empieza en medio de la acción/conflicto
+2. CONTEXTO - Breve background (quién, qué, cuándo)
+3. CONFLICTO - El problema o desafío enfrentado
+4. RESOLUCIÓN - Cómo se resolvió
+5. LECCIÓN - Qué aprendiste / CTA emocional`
+    },
+    educational: {
+      name: 'Educativo/Tutorial',
+      description: 'Enseña algo valioso',
+      structure: `1. PROMESA - Qué van a aprender (resultado)
+2. CREDIBILIDAD - Por qué deberían escucharte
+3. CONTENIDO - Pasos claros y accionables (3-5 puntos)
+4. RESUMEN - Recapitula los puntos clave
+5. CTA - Pide seguir/guardar/compartir`
+    },
+    custom: {
+      name: '✏️ Personalizada',
+      description: 'Define tu propia estructura',
+      structure: ''
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -39,6 +87,13 @@ export default function Home() {
         formData.append('files', file);
       });
 
+      // Add script structure if selected
+      if (scriptStructure === 'custom' && customStructure.trim()) {
+        formData.append('scriptStructure', customStructure);
+      } else if (scriptStructure !== 'none' && scriptStructure !== 'custom') {
+        formData.append('scriptStructure', scriptStructures[scriptStructure].structure);
+      }
+
       const response = await fetch('/api/process-video', {
         method: 'POST',
         body: formData,
@@ -60,9 +115,13 @@ export default function Home() {
 
   if (!mounted) return null;
 
+  // Determine if content is a text post (Twitter/X) vs video
+  const isTextPost = result && (result.metadata?.text_content && !result.videoPath) ||
+    (result?.metadata?.platform === 'Twitter' || result?.metadata?.platform === 'X');
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <header className="mb-12 text-center">
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-violet-500 mb-4">
             TikTok & Instagram Repurposer AI
@@ -72,10 +131,11 @@ export default function Home() {
           </p>
         </header>
 
-        <div className={`grid grid-cols-1 ${result ? 'lg:grid-cols-2' : 'max-w-2xl mx-auto'} gap-8 transition-all duration-500`}>
-          {/* Input Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* LEFT COLUMN: Input + Original Content */}
           <div className="space-y-6">
-            <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl h-fit">
+            {/* Input Form Card */}
+            <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
               <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
                 <Video className="w-5 h-5 text-pink-500" />
                 Input Video
@@ -86,7 +146,7 @@ export default function Home() {
                   <input
                     type="url"
                     required
-                    placeholder="Pega aquí el enlace (TikTok, Instagram, YouTube...)"
+                    placeholder="Pega aquí el enlace (TikTok, Instagram, YouTube, Twitter...)"
                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-pink-500 focus:outline-none transition-all"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
@@ -144,6 +204,54 @@ export default function Home() {
                     <option value="German">German</option>
                     <option value="Italian">Italian</option>
                   </select>
+                </div>
+
+                {/* Script Structure Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center gap-2">
+                    <ListOrdered className="w-4 h-4" />
+                    Estructura del Guión (Opcional)
+                  </label>
+                  <select
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-pink-500 focus:outline-none transition-all"
+                    value={scriptStructure}
+                    onChange={(e) => {
+                      setScriptStructure(e.target.value);
+                      setShowStructureInfo(e.target.value !== 'none');
+                    }}
+                  >
+                    {Object.entries(scriptStructures).map(([key, value]) => (
+                      <option key={key} value={key}>{value.name}</option>
+                    ))}
+                  </select>
+
+                  {/* Show structure preview */}
+                  {showStructureInfo && scriptStructure !== 'none' && scriptStructure !== 'custom' && (
+                    <div className="mt-2 p-3 bg-gray-900/50 rounded-lg border border-gray-700 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <p className="text-xs text-pink-400 mb-2">{scriptStructures[scriptStructure].description}</p>
+                      <pre className="text-xs text-gray-400 whitespace-pre-wrap font-mono">
+                        {scriptStructures[scriptStructure].structure}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Custom structure textarea */}
+                  {scriptStructure === 'custom' && (
+                    <div className="mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <p className="text-xs text-pink-400 mb-2">Define tu propia estructura (cada línea es una sección):</p>
+                      <textarea
+                        value={customStructure}
+                        onChange={(e) => setCustomStructure(e.target.value)}
+                        placeholder={`Ejemplo:
+1. HOOK - Captura la atención
+2. PROBLEMA - Presenta el dolor
+3. SOLUCIÓN - Tu propuesta
+4. PRUEBA - Testimonios o datos
+5. CTA - Qué hacer ahora`}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-pink-500 focus:outline-none transition-all text-sm font-mono h-32 resize-y"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* File Upload Section (Collapsible) */}
@@ -226,23 +334,15 @@ export default function Home() {
               )}
             </div>
 
-            {/* Video Player or Text Card */}
-
-          </div>
-
-          {/* Results Section - Only show if there is a result */}
-          {result && (
-            <div className="space-y-6">
-              <ResultDisplay result={result} language={language} />
-
-              {/* Metrics Card */}
+            {/* Original Content Card - BELOW INPUT (Platform-specific) */}
+            {result && (
               <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold flex items-center gap-2 text-blue-400">
-                    <BarChart2 className="w-5 h-5" />
-                    Métricas ({result.metadata.platform || 'Video'})
+                    {isTextPost ? <FileText className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+                    {isTextPost ? 'Original Post' : 'Original Video'}
                   </h3>
-                  {/* Visual Badge for Platform */}
+                  {/* Platform Badge */}
                   <span className={`px-3 py-1 rounded-full text-xs font-bold text-white border flex items-center gap-1 ${result.metadata.platform === 'TikTok' ? 'bg-black border-gray-600' :
                     result.metadata.platform === 'Instagram' ? 'bg-gradient-to-r from-purple-500 to-pink-500 border-pink-400' :
                       result.metadata.platform === 'YouTube' ? 'bg-red-600 border-red-500' :
@@ -251,95 +351,78 @@ export default function Home() {
                     }`}>
                     {result.metadata.platform === 'YouTube' && <Youtube className="w-3 h-3" />}
                     {result.metadata.platform === 'Instagram' && <Instagram className="w-3 h-3" />}
+                    {result.metadata.platform === 'TikTok' && <span className="text-xs">♪</span>}
                     {(result.metadata.platform === 'Twitter' || result.metadata.platform === 'X') && <Twitter className="w-3 h-3" />}
                     {result.metadata.platform || 'Video'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Views */}
-                  <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Video className="w-3 h-3 text-gray-400" />
-                      <p className="text-xs text-gray-400 uppercase">Vistas</p>
+                {isTextPost ? (
+                  // Twitter/X Text Post Card
+                  <div className="bg-white text-black rounded-xl p-6 shadow-lg max-w-md mx-auto">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 font-bold">
+                        {result.metadata.uploader ? result.metadata.uploader[0].toUpperCase() : 'U'}
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm">{result.metadata.uploader || 'Unknown User'}</p>
+                        <p className="text-xs text-gray-500">@{result.metadata.uploader || 'user'}</p>
+                      </div>
+                      <Twitter className="w-5 h-5 text-blue-400 ml-auto" />
                     </div>
-                    <p className="text-xl font-bold">{result.metadata.view_count !== undefined ? result.metadata.view_count.toLocaleString() : '-'}</p>
-                  </div>
 
-                  {/* Likes */}
-                  <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Sparkles className="w-3 h-3 text-pink-400" />
-                      <p className="text-xs text-gray-400 uppercase">Likes</p>
-                    </div>
-                    <p className="text-xl font-bold">{result.metadata.like_count !== undefined ? result.metadata.like_count.toLocaleString() : '-'}</p>
-                  </div>
+                    <p className="text-lg mb-4 whitespace-pre-wrap font-sans">{result.metadata.text_content || result.metadata.description}</p>
 
-                  {/* Comments */}
-                  <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800">
-                    <div className="flex items-center gap-2 mb-1">
-                      <MessageCircle className="w-3 h-3 text-blue-400" />
-                      <p className="text-xs text-gray-400 uppercase">Comentarios</p>
-                    </div>
-                    <p className="text-xl font-bold">{result.metadata.comment_count !== undefined ? result.metadata.comment_count.toLocaleString() : '-'}</p>
-                  </div>
+                    {result.metadata.image_url && (
+                      <div className="rounded-lg overflow-hidden border border-gray-200 mb-2">
+                        <img
+                          src={result.metadata.image_url}
+                          alt="Post attachment"
+                          className="w-full h-auto object-cover"
+                        />
+                      </div>
+                    )}
 
-                  {/* Shares */}
-                  <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Share2 className="w-3 h-3 text-green-400" />
-                      <p className="text-xs text-gray-400 uppercase">Compartidos</p>
+                    <div className="text-xs text-gray-500 mt-2">
+                      {result.metadata.upload_date ? new Date(result.metadata.upload_date).toLocaleDateString() : ''}
                     </div>
-                    <p className="text-xl font-bold">{result.metadata.share_count !== undefined ? result.metadata.share_count.toLocaleString() : '-'}</p>
                   </div>
-                </div>
+                ) : (
+                  // Video Player (TikTok, Instagram, YouTube)
+                  <>
+                    <div className={`mx-auto bg-black rounded-lg overflow-hidden mb-4 relative flex items-center justify-center ${(result.metadata.width && result.metadata.height && result.metadata.width > result.metadata.height)
+                      ? 'aspect-video w-full'
+                      : 'aspect-[9/16] max-h-[500px]'
+                      }`}>
+                      {result.videoPath ? (
+                        <video
+                          src={result.videoPath}
+                          controls
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="text-gray-500 text-center p-4">
+                          <Video className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">Video not available for preview</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    <div className="bg-gray-900/50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-400 uppercase mb-1">Original Description</p>
+                      <p className="text-sm text-gray-300">{result.metadata.description}</p>
+                    </div>
+                  </>
+                )}
               </div>
+            )}
+          </div>
 
-              {/* Analysis Card */}
-              <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-purple-400">
-                  <FileText className="w-5 h-5" />
-                  Analysis & Transcription
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase mb-1">Detected Language</p>
-                    <p className="text-sm font-medium text-green-400">{result.detectedLanguage}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase mb-1">Analysis</p>
-                    <p className="text-sm text-gray-300">{result.analysis}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase mb-1">Transcription (Original)</p>
-                    <div className="bg-gray-900/50 p-3 rounded-lg max-h-32 overflow-y-auto">
-                      <p className="text-xs text-gray-400 whitespace-pre-wrap">{result.transcription}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Generated Content Card */}
-              <div className="bg-gradient-to-br from-pink-900/20 to-violet-900/20 backdrop-blur-sm p-6 rounded-2xl border border-pink-500/30 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-pink-400">
-                  <Sparkles className="w-5 h-5" />
-                  New Content ({language})
-                </h3>
-                <div className="space-y-4">
-                  <div className="bg-gray-900/50 p-4 rounded-lg border-l-4 border-pink-500">
-                    <p className="text-xs text-pink-400 uppercase mb-1 font-bold">Hook</p>
-                    <p className="text-lg font-medium">{result.newContent.hook}</p>
-                  </div>
-                  <div className="bg-gray-900/50 p-4 rounded-lg">
-                    <p className="text-xs text-gray-400 uppercase mb-1">Video Script</p>
-                    <p className="text-sm text-gray-200 whitespace-pre-wrap font-mono">{result.newContent.script}</p>
-                  </div>
-                  <div className="bg-gray-900/50 p-4 rounded-lg">
-                    <p className="text-xs text-gray-400 uppercase mb-1">Call to Action</p>
-                    <p className="text-sm font-medium text-blue-300">{result.newContent.cta}</p>
-                  </div>
-                </div>
-              </div>
+          {/* RIGHT COLUMN: Results (only when result exists) */}
+          {result && (
+            <div className="space-y-6">
+              <ResultDisplay result={result} language={language} />
             </div>
           )}
         </div>
@@ -347,4 +430,3 @@ export default function Home() {
     </main>
   );
 }
-
